@@ -6,19 +6,6 @@ namespace AnimacionFiguras
 {
     internal class Ondas : Figura
     {
-        private readonly int cantidadRayos;         // cuántos rayos dibujar
-        private readonly float baseLongitud;       // longitud media de cada rayo
-        private readonly float amplitud;           // cuánto varía la longitud (radio)
-        private readonly float velocidad;          // velocidad de oscilación de la longitud
-        private readonly float[] dynLongitudes;    // longitudes dinámicas (radios)
-        private float fase;                        // fase global de la onda
-
-        // --- parámetros para la forma de onda en el dibujo ---
-        private const int PuntosPorRayo = 50;    // segmentos por rayo
-        private const float CiclosPorRayo = 2f;    // ciclos de sinusoide por rayo
-        private const float AmplitudOnda = 15f;   // desplazamiento máximo perpendicular
-        // -------------------------------------------------------
-
         private static readonly Color[] Paleta = new[]
         {
             Color.Red, Color.Orange, Color.Yellow,
@@ -26,64 +13,79 @@ namespace AnimacionFiguras
             Color.Violet
         };
 
+        // Amplitud y velocidad en caso de querer animar (opcional)
+        private readonly float amplitude;
+        private readonly float velocity;
+
+        // Fase de rotación (animación)
+        private float phase;
+
+        private readonly float baseLength;
+        private readonly int rayCount;
+
         public Ondas(PointF centro, float baseLength, int rayCount,
-                     float amp = 20f, float vel = 0.1f)
+                     float amp = 0f, float vel = 0f)
             : base(centro, baseLength, rayCount)
         {
-            this.baseLongitud = baseLength;
-            this.cantidadRayos = rayCount;
-            this.amplitud = amp;
-            this.velocidad = vel;
-            this.dynLongitudes = new float[rayCount];
-            this.fase = 0f;
+            this.centro     = centro;
+            this.baseLength = baseLength;
+            this.rayCount   = rayCount;
 
-            // inicializamos todos los radios con el valor base
-            for (int i = 0; i < cantidadRayos; i++)
-                dynLongitudes[i] = baseLongitud;
+            this.amplitude = amp;
+            this.velocity = vel;
+            this.phase = 0f;
         }
 
-        public override void Actualizar()
+
+        // Llamado por tu temporizador o por SetTiempo para avanzar la fase
+        
+
+        // Si prefieres controlar el tiempo manualmente:
+        public void SetTiempo(double tiempoGlobal)
         {
-            // varía cada radio con una senoide
-            for (int i = 0; i < cantidadRayos; i++)
-            {
-                float faseLocal = fase + i * (2f * (float)Math.PI / cantidadRayos);
-                dynLongitudes[i] = baseLongitud + amplitud * (float)Math.Sin(faseLocal);
-            }
-            fase += velocidad;  // avanza la fase global
+            // Por ejemplo: fase = tiempoGlobal * velocity;
+            phase = (float)(tiempoGlobal * velocity) % (2 * (float)Math.PI);
         }
 
         public override void Dibujar(Graphics g, Size area)
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            for (int i = 0; i < cantidadRayos; i++)
+            float angleInc = 2f * (float)Math.PI / rayCount;
+            int puntosPorRayo = 50;    // cuántos segmentos por rayo
+            float ciclosPorRayo = 2f;  // ciclos de onda a lo largo del rayo
+
+            for (int i = 0; i < rayCount; i++)
             {
-                // dirección radial y perpendicular
-                float angulo = 2f * (float)Math.PI * i / cantidadRayos;
-                var dir = new PointF((float)Math.Cos(angulo), (float)Math.Sin(angulo));
-                var perp = new PointF(-dir.Y, dir.X);
+                float theta = i * angleInc + phase;
+                float cosTh = (float)Math.Cos(theta);
+                float sinTh = (float)Math.Sin(theta);
 
-                // longitud “radio” para este rayo
-                float longitudMax = dynLongitudes[i];
-
-                // construimos la sinusoide a lo largo de la línea
-                var puntos = new PointF[PuntosPorRayo];
-                for (int j = 0; j < PuntosPorRayo; j++)
+                // Generar los puntos ondulados
+                var puntos = new PointF[puntosPorRayo + 1];
+                for (int j = 0; j <= puntosPorRayo; j++)
                 {
-                    float t = j / (float)(PuntosPorRayo - 1);
-                    float dist = t * longitudMax;
-                    float faseOnda = fase + t * CiclosPorRayo * 2f * (float)Math.PI;
-                    float offset = AmplitudOnda * (float)Math.Sin(faseOnda);
-                    puntos[j] = new PointF(
-                        centro.X + dir.X * dist + perp.X * offset,
-                        centro.Y + dir.Y * dist + perp.Y * offset
+                    float t = j / (float)puntosPorRayo;  // de 0.0 a 1.0 a lo largo del rayo
+
+                    // Punto base sobre el rayo
+                    var basePt = new PointF(
+                        centro.X + baseLength * t * cosTh,
+                        centro.Y + baseLength * t * sinTh
                     );
+
+                    // Desplazamiento perpendicular: onda senoidal
+                    float wave = amplitude * (float)Math.Sin(2 * Math.PI * ciclosPorRayo * t + phase * 6f);
+                    var offset = new PointF(-sinTh * wave, cosTh * wave);
+
+                    puntos[j] = new PointF(basePt.X + offset.X, basePt.Y + offset.Y);
                 }
 
-                using (var lapiz = new Pen(Paleta[i % Paleta.Length], 2f))
-                    g.DrawLines(lapiz, puntos);
+                // Dibujar la línea ondulada
+                Color col = Paleta[i % Paleta.Length];
+                using (var pen = new Pen(col, 2f))
+                    g.DrawLines(pen, puntos);
             }
         }
+
     }
 }

@@ -49,6 +49,7 @@ namespace AnimacionFiguras
         private void btnAdelantar_Click(object sender, EventArgs e)
         {
             tiempoGlobal = Math.Min(DURACION_MAXIMA, tiempoGlobal + 1.0);
+            ondas.SetTiempo(tiempoGlobal);
             progressBar1.Value = (int)(tiempoGlobal * 100);
             pictureBox1.Invalidate();
         }
@@ -56,6 +57,7 @@ namespace AnimacionFiguras
         private void btnRetroceder_Click(object sender, EventArgs e)
         {
             tiempoGlobal = Math.Max(0.0, tiempoGlobal - 1.0);
+            ondas.SetTiempo(tiempoGlobal);
             progressBar1.Value = (int)(tiempoGlobal * 100);
             pictureBox1.Invalidate();
         }
@@ -68,23 +70,17 @@ namespace AnimacionFiguras
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            // Avanza o retrocede el tiempo global
+            // 1) Mueves el tiempo
             tiempoGlobal += timerIntervaloSegundos * direccionAnimacion;
             if (tiempoGlobal < 0) tiempoGlobal = 0;
             if (tiempoGlobal >= DURACION_MAXIMA)
-            {
                 tiempoGlobal = 0;
-                progressBar1.Value = 0;
-            }
 
-            // Actualiza la física de las ondas
-            ondas.Actualizar();
+            // 2) Sincronizas la fase con el tiempo absoluto
+            ondas.SetTiempo(tiempoGlobal);
 
-            // Actualiza la barra de progreso
-            int progreso = (int)(tiempoGlobal * 100);
-            progressBar1.Value = Math.Min(progressBar1.Maximum, Math.Max(0, progreso));
-
-            // Fuerza repintado
+            // 3) Actualizas UI
+            progressBar1.Value = (int)(tiempoGlobal * 100);
             pictureBox1.Invalidate();
         }
 
